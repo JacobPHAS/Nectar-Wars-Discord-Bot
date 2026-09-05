@@ -1,11 +1,10 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { Rcon } = require('rcon-client');
-const {
-    token,
-    rconHost,
-    rconPort,
-    rconPassword
-} = require('./config.json');
+
+const token = process.env.DISCORD_TOKEN;
+const rconHost = process.env.RCON_HOST;
+const rconPort = Number(process.env.RCON_PORT);
+const rconPassword = process.env.RCON_PASSWORD;
 
 const client = new Client({
     intents: [
@@ -33,17 +32,24 @@ client.on('interactionCreate', async interaction => {
                 password: rconPassword
             });
 
+            console.log('Connected to Minecraft RCON');
+
             const response = await rcon.send('discordstatus');
+
+            console.log(`Minecraft replied: ${response}`);
+
             const parts = response.split('|');
 
             if (parts[0] !== 'NWSTATUS') {
-                await interaction.editReply('Minecraft returned an invalid status.');
+                await interaction.editReply(
+                    'Minecraft returned an invalid status.'
+                );
                 return;
             }
 
-            const status = parts[1];
-            const game = parts[2];
-            const players = parts[3];
+            const status = parts[1] || 'Unknown';
+            const game = parts[2] || 'Unknown';
+            const players = parts[3] || '0';
 
             const embed = new EmbedBuilder()
                 .setColor(0xF2B705)
@@ -78,9 +84,15 @@ client.on('interactionCreate', async interaction => {
         } catch (error) {
             console.error('Minecraft connection failed:', error);
 
-            await interaction.editReply(
-                'Unable to retrieve the Minecraft server status.'
-            );
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply(
+                    'Unable to retrieve the Minecraft server status.'
+                );
+            } else {
+                await interaction.reply(
+                    'Unable to retrieve the Minecraft server status.'
+                );
+            }
 
         } finally {
             if (rcon) {
@@ -97,6 +109,26 @@ client.on('interactionCreate', async interaction => {
 client.on('error', error => {
     console.error('Discord client error:', error);
 });
+
+if (!token) {
+    console.error('DISCORD_TOKEN is missing.');
+    process.exit(1);
+}
+
+if (!rconHost) {
+    console.error('RCON_HOST is missing.');
+    process.exit(1);
+}
+
+if (!rconPort) {
+    console.error('RCON_PORT is missing or invalid.');
+    process.exit(1);
+}
+
+if (!rconPassword) {
+    console.error('RCON_PASSWORD is missing.');
+    process.exit(1);
+}
 
 client.login(token).catch(error => {
     console.error('Login failed:', error);
