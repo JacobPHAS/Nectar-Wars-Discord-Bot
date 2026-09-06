@@ -1,5 +1,8 @@
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
-const { clientId, guildId } = require('./config.json');
+
+const token = process.env.DISCORD_TOKEN;
+const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
 
 const commands = [
     new SlashCommandBuilder()
@@ -11,7 +14,22 @@ const commands = [
         .setDescription('Shows the Nectar Wars leaderboard.')
 ].map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+if (!token) {
+    console.error('DISCORD_TOKEN is missing.');
+    process.exit(1);
+}
+
+if (!clientId) {
+    console.error('CLIENT_ID is missing.');
+    process.exit(1);
+}
+
+if (!guildId) {
+    console.error('GUILD_ID is missing.');
+    process.exit(1);
+}
+
+const rest = new REST({ version: '10' }).setToken(token);
 
 async function deployCommands() {
     try {
@@ -25,6 +43,7 @@ async function deployCommands() {
         console.log('Discord commands registered successfully!');
     } catch (error) {
         console.error('Failed to register commands:', error);
+        process.exit(1);
     }
 }
 
